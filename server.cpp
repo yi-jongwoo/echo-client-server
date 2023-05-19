@@ -53,7 +53,7 @@ struct Param {
 				broadcast = true;
 				continue;
 			}
-			port = atoi(argv[i++]);
+			port = atoi(argv[i]);
 		}
 		if(broadcast)
 			echo=false;
