@@ -78,7 +78,9 @@ int main(int argc, char* argv[]) {
 	while (true) {
 		static const int BUFSIZE = 65536;
 		char buf[BUFSIZE];
-		scanf("%s", buf);
+		if(scanf("%[^\n]", buf)<=0)
+			buf[0]=0;
+		getchar();
 		strcat(buf, "\r\n");
 		ssize_t res = ::send(sd, buf, strlen(buf), 0);
 		if (res == 0 || res == -1) {

@@ -16,7 +16,7 @@ struct multiqueue:public std::queue<std::string>{
 		ex.lock();
 		std::queue<std::string>::push(x);
 		if(size()>=1024){
-			perror("queue overflow");
+			std::cout<<"queue overflow"<<std::endl;
 			exit(1);
 		}
 		ex.unlock();
@@ -76,7 +76,7 @@ void recvThread(int sd) { // recv and echo
 			break;
 		}
 		std::string str(buf,res);
-		std::cout<<str<<std::endl;
+		std::cout<<str<<std::flush;
 		if (param.echo) {
 			res = ::send(sd, buf, res, 0);
 			if (res == 0 || res == -1) {
