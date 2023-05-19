@@ -1,4 +1,5 @@
 #include <queue>
+#include <set>
 #include <semaphore> //c++20 required
 #include <mutex>
 #include <iostream>
@@ -15,7 +16,7 @@ struct multiqueue:public std::queue<std::string>{
 		ex.lock();
 		std::queue<std::string>::push(x);
 		if(size()>=1024){
-			std::cout<<"queue overflow"<<std::endl;
+			perror("queue overflow");
 			exit(1);
 		}
 		ex.unlock();
@@ -29,10 +30,10 @@ struct multiqueue:public std::queue<std::string>{
 		ex.unlock();
 		return res;
 	}
-};
+} Q;
 
 void usage() {
-	std::cout<<"syntax: echo-server <port> [-e[-b]]\n"<<std::endl;
+	std::cout<<"syntax: echo-server <port> [-e[-b]]"<<std::endl;
 	std::cout<<"  -e : echo"<<std::endl;
 	std::cout<<"  -b : broadcast"<<std::endl;
 }
@@ -54,12 +55,17 @@ struct Param {
 			}
 			port = atoi(argv[i++]);
 		}
+		if(broadcast)
+			echo=false;
 		return port != 0;
 	}
 } param;
 
-void recvThread(int sd) {
-	printf("connected\n");
+std::set<int> sds;
+std::mutex sdsex;
+
+void recvThread(int sd) { // recv and echo
+	std::cout<<"connected"<<std::endl;
 	static const int BUFSIZE = 65536;
 	char buf[BUFSIZE];
 	while (true) {
@@ -69,9 +75,8 @@ void recvThread(int sd) {
 			perror(" ");
 			break;
 		}
-		buf[res] = '\0';
-		printf("%s", buf);
-		fflush(stdout);
+		std::string str(buf,res);\
+		std::cout<<str<<std::endl;
 		if (param.echo) {
 			res = ::send(sd, buf, res, 0);
 			if (res == 0 || res == -1) {
@@ -80,9 +85,30 @@ void recvThread(int sd) {
 				break;
 			}
 		}
+		if(param.broadcast)
+			Q.push(str);
 	}
-	printf("disconnected\n");
+	std::cout<<"disconnected"<<std::endl;
+	sdsex.lock();
+	sds.erase(sd);
+	sdsex.unlock();
 	::close(sd);
+}
+
+void broadcastThread() {
+	for(;;){
+		std::string str=Q.pop();
+		sdsex.lock();
+		for(int sd:sds){
+			int res = ::send(sd, str.c_str(), str.size(), 0);
+			if (res == 0 || res == -1) {
+				fprintf(stderr, "send return %ld", res);
+				perror(" ");
+				break;
+			}
+		}
+		sdsex.unlock();
+	}
 }
 
 int main(int argc, char* argv[]) {
@@ -121,7 +147,10 @@ int main(int argc, char* argv[]) {
 		perror("listen");
 		return -1;
 	}
-
+	if(param.broadcast){
+		std::thread* t = new std::thread(broadcastThread);
+		t->detach();
+	}
 	while (true) {
 		struct sockaddr_in cli_addr;
 		socklen_t len = sizeof(cli_addr);
@@ -130,6 +159,9 @@ int main(int argc, char* argv[]) {
 			perror("accept");
 			break;
 		}
+		sdsex.lock();
+		sds.insert(cli_sd);
+		sdsex.unlock();
 		std::thread* t = new std::thread(recvThread, cli_sd);
 		t->detach();
 	}
