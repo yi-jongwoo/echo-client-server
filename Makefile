@@ -6,8 +6,11 @@ echo-server: server.o
 server.o: server.cpp
 	g++ server.cpp -std=c++20 -c -o server.o
 
-echo-client: 
-	touch echo-client
+echo-client: client.o
+	g++ client.o -o echo-client
+
+client.o: client.cpp
+	g++ client.cpp -std=c++20 -c -o client.o
 
 clean:
 	rm -f *.o

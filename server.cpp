@@ -75,7 +75,7 @@ void recvThread(int sd) { // recv and echo
 			perror(" ");
 			break;
 		}
-		std::string str(buf,res);\
+		std::string str(buf,res);
 		std::cout<<str<<std::endl;
 		if (param.echo) {
 			res = ::send(sd, buf, res, 0);
